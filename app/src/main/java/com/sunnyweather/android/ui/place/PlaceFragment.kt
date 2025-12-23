@@ -1,5 +1,6 @@
 package com.sunnyweather.android.ui.place
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,15 +12,20 @@ import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.sunnyweather.android.MainActivity
 import com.sunnyweather.android.R
+import com.sunnyweather.android.ui.weather.WeatherActivity
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class PlaceFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var searchPlaceEdit: EditText
     private lateinit var bgImageView: ImageView
-
+    private var searchJob: kotlinx.coroutines.Job? = null
     val viewModel by lazy {
         ViewModelProvider(this).get(PlaceViewModel::class.java)
     }
@@ -34,19 +40,33 @@ class PlaceFragment : Fragment() {
         return view
     }
 
-
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        val layoutManager = LinearLayoutManager(activity)
+        if (activity is MainActivity && viewModel.isPlaceSaved()) {
+            val place = viewModel.getSavedPlace()
+            val intent = Intent(context, WeatherActivity::class.java).apply {
+                putExtra("location_lng", place.location.lng)
+                putExtra("location_lat", place.location.lat)
+                putExtra("place_name", place.name)
+            }
+            startActivity(intent)
+            activity?.finish()
+            return }
 
+        val layoutManager = LinearLayoutManager(activity)
         recyclerView.layoutManager = layoutManager
         adapter = PlaceAdapter(this, viewModel.placeList)
         recyclerView.adapter = adapter
         searchPlaceEdit.addTextChangedListener { editable ->
             val content = editable.toString()
             if (content.isNotEmpty()) {
-                viewModel.searchPlaces(content)
-            } else {
+// 每当打字时，先取消上一个还没发出的请求
+                searchJob?.cancel()
+                // 开启一个延迟任务
+                searchJob = lifecycleScope.launch {
+                    delay(500) // 停顿 500 毫秒
+                    viewModel.searchPlaces(content)
+                }            } else {
                 recyclerView.visibility = View.GONE
                 bgImageView.visibility = View.VISIBLE
                 viewModel.placeList.clear()
