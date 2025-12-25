@@ -7,6 +7,14 @@ import android.util.Log
 import kotlinx.coroutines.delay
 
 class ModelDeployment(private val modelPath: String) {
+    init {
+        // 提前手动加载，消除 SDK 探测时的 nativeCheckLoaded 报错
+        try {
+            System.loadLibrary("litertlm_jni")
+        } catch (e: Exception) {
+            Log.w("GemmaTest", "Pre-loading jni library...")
+        }
+    }
     private var engine: Engine? = null
     private var conversation: Conversation? = null
     suspend fun initialize() = withContext(Dispatchers.Default) { // 改为 Default
@@ -28,12 +36,9 @@ class ModelDeployment(private val modelPath: String) {
 // 修改 initialize 方法中的 config 部分
                 val config = ConversationConfig(
                     tools = listOf(SystemStatusTool()),
-                    // 关键：明确指出它“拥有”这些工具，并且必须使用。
                     systemMessage = Message.of(
-                        // 使用官方推荐的触发句开头
-                        "You are a model that can do function calling with the following functions: [checkStatus]. " +
-                                "When asked about system metrics, YOU MUST call the checkStatus tool. " +
-                                "Please use the checkStatus tool now."
+                        "You are a helpful assistant with access to local system tools. " +
+                                "Use the 'checkStatus' tool whenever the user asks about hardware, temperature, or system health."
                     )
                 )
 
@@ -100,9 +105,9 @@ class ModelDeployment(private val modelPath: String) {
 }
 
 class SystemStatusTool {
-    @Tool(description = "Fetches the current internal system health and hardware metrics.")    fun checkStatus(): String {
+    @Tool(description = "Retrieve the current hardware status, including CPU temperature and system health.")
+    fun check_status(): String {
         Log.e("GemmaTest", ">>> [HIT] KOTLIN CODE IS TRIGGERED! <<<")
-        // 返回一个格式极其简单的字符串
-        return "System Status: Healthy, Temperature: 38C, Load: Low"
+        return "Temp: 35C, Status: OK"
     }
 }

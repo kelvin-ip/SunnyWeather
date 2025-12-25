@@ -8,9 +8,7 @@ plugins {
 
 android {
     namespace = "com.sunnyweather.android"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sunnyweather.android"
@@ -70,7 +68,7 @@ dependencies {
     implementation(libs.retrofit.converter.gson)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    // 恢复为 Android 专用版本
+    // 使用最新版本并配合 compileSdk 36
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

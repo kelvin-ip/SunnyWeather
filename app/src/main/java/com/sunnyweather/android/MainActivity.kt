@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val path = FileUtils.copyAssetToFiles(this@MainActivity, "gemma_gen.litertlm")
+                val path = FileUtils.copyAssetToFiles(this@MainActivity, "mobile-actions_q8_ekv1024.litertlm")
                 deployment = ModelDeployment(path)
 
                 Log.d("FunctionGemmaTest", "正在加载引擎...")
@@ -26,8 +26,8 @@ class MainActivity : AppCompatActivity() {
                 // 关键点：延迟 1 秒确保引擎状态彻底同步
                 delay(1000)
 
-                Log.d("FunctionGemmaTest", "发起测试提问，请耐心等待 30-60 秒...")
-                deployment.testChat("What is the current system status?") { response ->
+                Log.d("FunctionGemmaTest", "发起测试提问...")
+                deployment.testChat("How is the system status right now?") { response ->
                     Log.e("SUCCESS_OUTPUT", "Final Answer: $response")
                 }
 
