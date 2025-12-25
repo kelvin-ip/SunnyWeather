@@ -1,3 +1,5 @@
+import com.android.build.api.dsl.AaptOptions
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,8 +18,11 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            // 强制只打包 arm64 架构，避免 32 位混合导致的 JNI 链接错误
+            abiFilters.add("arm64-v8a")
+        }
     }
 
     buildTypes {
@@ -38,6 +43,10 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    androidResources{
+        noCompress.add("litertlm")
     }
 }
 
@@ -61,7 +70,8 @@ dependencies {
     implementation(libs.retrofit.converter.gson)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.x.x")
+    // 恢复为 Android 专用版本
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -30,7 +30,7 @@
 
                 <include layout="@layout/life_index" />
 
-            </LinearLayout>
+</LinearLayout>
 
         </ScrollView>
 
