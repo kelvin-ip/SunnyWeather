@@ -20,6 +20,14 @@ class ModelDeployment(private val modelPath: String) {
 
     private var engine: Engine? = null
     private var conversation: Conversation? = null
+    private val registeredTools = mutableListOf<Any>(SystemStatusTool())
+
+    fun setTools(tools: List<Any>) {
+        registeredTools.clear()
+        registeredTools.add(SystemStatusTool()) // 保留原有的 SystemStatusTool
+        registeredTools.addAll(tools)
+    }
+
     suspend fun initialize() = withContext(Dispatchers.Default) {
         Log.d("GemmaTest", "开始初始化，强制锁定 CPU 模式")
         try {
@@ -97,8 +105,8 @@ class ModelDeployment(private val modelPath: String) {
             }
 
             val config = ConversationConfig(
-                tools = listOf(SystemStatusTool()),
-                systemMessage = Message.of("You are a model that can do function calling with the following functions.")
+                tools = registeredTools,
+                systemMessage = Message.of("You are a helpful assistant. You can use tools to check system status or search for city weather.")
             )
             conversation = engine?.createConversation(config)
             Log.d("GemmaTest", "会话已安全重置")
