@@ -21,14 +21,14 @@ class MainActivity : AppCompatActivity() {
                 val path = FileUtils.copyAssetToFiles(this@MainActivity, "mobile-actions_q8_ekv1024.litertlm")
                 deployment = ModelDeployment(path)
 
-                Log.d("FunctionGemmaTest", "正在加载引擎...")
+                Log.d("GemmaTest", "正在加载引擎...")
                 deployment.initialize()
                 // 关键点：延迟 1 秒确保引擎状态彻底同步
                 delay(1000)
 
-                Log.d("FunctionGemmaTest", "发起测试提问...")
-                deployment.testChat("How is the system status right now?") { response ->
-                    Log.e("SUCCESS_OUTPUT", "Final Answer: $response")
+                Log.d("GemmaTest", "发起测试提问...")
+                deployment.testChat("check system status ") { response ->
+                    Log.e("SUCCESS_OUTPUT", "流式回答: $response")
                 }
 
 
@@ -39,7 +39,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        // 关键：在 Activity 销毁时才真正关闭大模型
+        deployment?.release()
         super.onDestroy()
-        deployment.release()
     }
 }
