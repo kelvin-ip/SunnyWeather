@@ -20,6 +20,9 @@ import com.sunnyweather.android.R
 import com.sunnyweather.android.ui.weather.WeatherActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.speech.RecognizerIntent
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class PlaceFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
@@ -30,6 +33,11 @@ class PlaceFragment : Fragment() {
         ViewModelProvider(this).get(PlaceViewModel::class.java)
     }
     private lateinit var adapter: PlaceAdapter
+
+    private lateinit var micBtn: FloatingActionButton
+
+
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_place, container, false)
@@ -42,6 +50,8 @@ class PlaceFragment : Fragment() {
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
+
+
         if (activity is MainActivity && viewModel.isPlaceSaved()) {
             val place = viewModel.getSavedPlace()
             val intent = Intent(context, WeatherActivity::class.java).apply {
@@ -50,7 +60,7 @@ class PlaceFragment : Fragment() {
                 putExtra("place_name", place.name)
             }
             startActivity(intent)
-            activity?.finish()
+//            activity?.finish()
             return }
 
         val layoutManager = LinearLayoutManager(activity)
@@ -66,12 +76,15 @@ class PlaceFragment : Fragment() {
                 searchJob = lifecycleScope.launch {
                     delay(500) // 停顿 500 毫秒
                     viewModel.searchPlaces(content)
-                }            } else {
+                }
+            }
+            else {
                 recyclerView.visibility = View.GONE
                 bgImageView.visibility = View.VISIBLE
                 viewModel.placeList.clear()
                 adapter.notifyDataSetChanged()
-            } }
+            }
+        }
 
         viewModel.placeLiveData.observe(this, Observer { result ->
             val places = result.getOrNull()
@@ -88,4 +101,5 @@ class PlaceFragment : Fragment() {
             }
         }
         )
-    } }
+    }
+}

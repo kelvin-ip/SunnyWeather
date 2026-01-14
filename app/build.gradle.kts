@@ -12,8 +12,8 @@ android {
 
     defaultConfig {
         applicationId = "com.sunnyweather.android"
-        minSdk = 29
-        targetSdk = 36
+        minSdk = 31
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -42,9 +42,15 @@ android {
     buildFeatures {
         compose = true
     }
-
     androidResources{
         noCompress.add("litertlm")
+        noCompress.add("so")
+    }
+    packaging {
+        jniLibs {
+            // 允许 SDK 尝试自动处理页面对齐（仅在 AGP 8.3+ 有效）
+            useLegacyPackaging = true
+        }
     }
 }
 
@@ -68,7 +74,7 @@ dependencies {
     implementation(libs.retrofit.converter.gson)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    // 使用最新版本并配合 compileSdk 36
+    implementation(kotlin("reflect"))
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

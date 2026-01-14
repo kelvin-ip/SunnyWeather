@@ -36,7 +36,8 @@ object SunnyWeatherNetwork {
                 }
             }
             )
-        } }
+        }
+    }
 
 
 
