@@ -14,11 +14,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.sunnyweather.android.logic.functiongemma.CityWeatherTool
+import com.sunnyweather.android.logic.functiongemma.Tools.CityWeatherTool
 import com.sunnyweather.android.logic.functiongemma.FileUtils
 import com.sunnyweather.android.logic.functiongemma.ModelDeployment
-import com.sunnyweather.android.logic.functiongemma.SampleToolSet
-import com.sunnyweather.android.logic.functiongemma.SystemStatusTool
+import com.sunnyweather.android.logic.functiongemma.Tools.SampleToolSet
+import com.sunnyweather.android.logic.functiongemma.Tools.SystemStatusTool
 import com.sunnyweather.android.logic.service.VoiceAssistantManager
 import com.sunnyweather.android.ui.weather.WeatherActivity
 import kotlinx.coroutines.delay
@@ -111,11 +111,10 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                deployment.rebuildConversation()
-
+                // 不再需要手动重建会话，会话池会自动提供干净的会话
                 tvConsole.append("\n模型回答: ") // 预留前缀
 
-                // 2. 调用流式方法
+                // 调用流式方法（会话池会自动管理上下文）
                 deployment.testChat(inputText) { response ->
                     // 因为 collect 在 Dispatchers.Default 执行，更新 UI 需切回主线程
                     runOnUiThread {

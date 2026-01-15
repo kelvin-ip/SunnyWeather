@@ -1,13 +1,12 @@
-package com.sunnyweather.android.logic.functiongemma
+package com.sunnyweather.android.logic.functiongemma.Tools
 
 import android.util.Log
 import com.google.ai.edge.litertlm.Tool
-import com.google.ai.edge.litertlm.ToolParam // 必须导入
+import com.google.ai.edge.litertlm.ToolParam
 import com.sunnyweather.android.logic.model.Place
 import com.sunnyweather.android.logic.network.SunnyWeatherNetwork
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 
 class CityWeatherTool(private val onCityFound: (Place) -> Unit) {
 
@@ -19,18 +18,18 @@ class CityWeatherTool(private val onCityFound: (Place) -> Unit) {
 
         return try {
             runBlocking(Dispatchers.IO) {
-                    val response = SunnyWeatherNetwork.searchPlaces(city_name)
-                    if (response.status == "ok" && response.places.isNotEmpty()) {
-                        val place = response.places[0]
-                        onCityFound(place)
-                        mapOf(
-                            "result" to "success",
-                            "city_name" to place.name,
-                            "context" to "Navigating to weather detail page"
-                        )
-                    } else {
-                        mapOf("result" to "error", "message" to "City not found: $city_name")
-                    }
+                val response = SunnyWeatherNetwork.searchPlaces(city_name)
+                if (response.status == "ok" && response.places.isNotEmpty()) {
+                    val place = response.places[0]
+                    onCityFound(place)
+                    mapOf(
+                        "result" to "success",
+                        "city_name" to place.name,
+                        "context" to "Navigating to weather detail page"
+                    )
+                } else {
+                    mapOf("result" to "error", "message" to "City not found: $city_name")
+                }
             }
         } catch (e: Exception) {
             Log.e("CityWeatherTool", "Execution failed", e)

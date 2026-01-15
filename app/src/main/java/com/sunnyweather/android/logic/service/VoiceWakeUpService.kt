@@ -183,9 +183,6 @@ class VoiceWakeUpService : Service() {
         val intent = Intent("com.sunnyweather.android.WAKE_WORD_DETECTED")
         intent.putExtra("wake_word", wakeWord)
         sendBroadcast(intent)
-        
-        // 可选：震动反馈或播放提示音
-        // vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
     }
     
     private fun stopListening() {
