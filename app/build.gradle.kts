@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(kotlin("reflect"))
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation("com.alphacephei:vosk-android:0.3.75")  // 或 latest.release
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

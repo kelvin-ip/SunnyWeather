@@ -4,9 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.util.Log
 import android.view.MotionEvent
 import android.widget.Button
@@ -22,6 +19,7 @@ import com.sunnyweather.android.logic.functiongemma.FileUtils
 import com.sunnyweather.android.logic.functiongemma.ModelDeployment
 import com.sunnyweather.android.logic.functiongemma.SampleToolSet
 import com.sunnyweather.android.logic.functiongemma.SystemStatusTool
+import com.sunnyweather.android.logic.service.VoiceAssistantManager
 import com.sunnyweather.android.ui.weather.WeatherActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -29,12 +27,13 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var deployment: ModelDeployment
-    private var speechRecognizer: SpeechRecognizer? = null
     private var isListening = false
-    // 全局变量声明（推荐放在类顶部）
     private lateinit var btnVoice: Button          // 语音按钮（全局）
     private lateinit var etInput: EditText         // 输入框（可选全局）
     private lateinit var tvConsole: TextView       // 日志控制台（可选全局）
+    
+    // Vosk 语音助手管理器
+    private var voiceAssistant: VoiceAssistantManager? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,14 +64,16 @@ class MainActivity : AppCompatActivity() {
                 deployment = ModelDeployment(path)
                 deployment.setTools(listOf(weatherTool, SampleToolSet(), SystemStatusTool()))
                 deployment.initialize()
+                // 初始化 Vosk 语音助手（后台监听唤醒词）
+                initVoiceAssistant()
                 tvConsole.text = "系统就绪。请输入指令或使用语音输入。"
+                
             } catch (e: Exception) {
                 Log.e("GemmaTest", "初始化异常", e)
                 tvConsole.text = "初始化失败: ${e.message}"
             }
         }
 
-        // 2. 发送按钮逻辑
         btnSend.setOnClickListener {
             val inputText = etInput.text.toString().trim()
             if (inputText.isBlank()) return@setOnClickListener
@@ -87,16 +88,16 @@ class MainActivity : AppCompatActivity() {
                         != PackageManager.PERMISSION_GRANTED) {
                         ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1)
                     } else {
-                        // 视觉反馈：按下变色或改文字（可选）
+                        // 视觉反馈
                         btnVoice.text = "正在录音..."
-                        startVoiceRecognition()
+                        voiceAssistant?.startManualRecognition()
                     }
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     // 恢复按钮文字
                     btnVoice.text = "按住 说话"
-                    stopVoiceRecognition()
+                    voiceAssistant?.stopManualRecognition()
                     true
                 }
                 else -> false
@@ -128,62 +129,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 启动语音识别（极简版）
-    private fun startVoiceRecognition() {
-        if (speechRecognizer == null) {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-            speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    isListening = true
-                    // 可选：这里可以加提示音或振动，但不显示文字
-                }
-
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {}
-
-                override fun onError(error: Int) {
-                    // 错误时静默停止，不提示
-                    stopVoiceRecognition()
-                }
-
-                override fun onResults(results: Bundle?) {
-                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    if (!matches.isNullOrEmpty()) {
-                        val text = matches[0].trim()
-                        etInput.setText(text)  // 直接填入输入框
-                        processInput(text, etInput, tvConsole)  // 处理输入
+    // 初始化 Vosk 语音助手
+    private fun initVoiceAssistant() {
+        voiceAssistant = VoiceAssistantManager(this).apply {
+            init(object : VoiceAssistantManager.VoiceCallback {
+                override fun onWakeWordDetected(wakeWord: String) {
+                    runOnUiThread {
+                        tvConsole.append("\n\n🎙️ 检测到唤醒词: $wakeWord")
+                        tvConsole.append("\n[系统已进入监听模式，请说话...]")
+                        btnVoice.text = "正在倾听..." // 更新按钮文字作为反馈
+                        Toast.makeText(this@MainActivity, "已唤醒，请说话...", Toast.LENGTH_SHORT).show()
                     }
-                    stopVoiceRecognition()
                 }
-
-                override fun onPartialResults(partialResults: Bundle?) {}  // 不显示部分结果
-                override fun onEvent(eventType: Int, params: Bundle?) {}
+                
+                override fun onSpeechResult(result: String) {
+                    runOnUiThread {
+                        btnVoice.text = "按住 说话" // 恢复按钮文字
+                        if (result.isNotEmpty()) {
+                            tvConsole.append("\n👤 语音识别: $result")
+                            etInput.setText(result)
+                            processInput(result, etInput, tvConsole)
+                        } else {
+                            tvConsole.append("\n[未检测到有效语音内容]")
+                        }
+                    }
+                }
+                
+                override fun onError(error: String) {
+                    runOnUiThread {
+                        btnVoice.text = "按住 说话" // 恢复按钮文字
+                        tvConsole.append("\n❌ 识别失败: $error")
+                    }
+                }
             })
         }
-
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-        }
-
-        try {
-            speechRecognizer?.startListening(intent)
-        } catch (e: Exception) {
-            stopVoiceRecognition()  // 启动失败也静默停止
-        }
-    }
-
-    // 立即停止语音识别
-// 修改后的停止方法
-    private fun stopVoiceRecognition() {
-        if (isListening) {
-            // stopListening 会触发 onResults，这是长按松开后需要的行为
-            speechRecognizer?.stopListening()
-            isListening = false
-        }
+        
+        tvConsole.append("\n✅ Vosk 语音助手已启动，正在后台监听唤醒词...")
     }
 
     // 权限回调
@@ -194,14 +175,14 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startVoiceRecognition()
+            voiceAssistant?.startManualRecognition()
         }
         // 拒绝权限时不做任何提示（符合需求）
     }
 
     override fun onDestroy() {
         deployment.release()
-        speechRecognizer?.destroy()
+        voiceAssistant?.destroy()
         super.onDestroy()
     }
 }
