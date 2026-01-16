@@ -56,7 +56,7 @@ class ModelDeployment(private val modelPath: String) {
             
             // 从池中快速获取一个就绪会话（无需等待重建）
             val conversation = pool.acquire()
-            Log.d("GemmaTest", "从会话池获取会话，当前池状态: ${pool.getPoolStatus()}")
+//            Log.d("GemmaTest", "从会话池获取会话，当前池状态: ${pool.getPoolStatus()}")
 //            delay(10000)
             try {
                 conversation.sendMessageAsync(Message.of(input.trim())).collect { response ->
@@ -70,7 +70,7 @@ class ModelDeployment(private val modelPath: String) {
                 Log.d("GemmaTest", "流式推理回答完毕")
                 // 用完后归还给池，后台会自动重建
                 pool.release(conversation)
-                Log.d("GemmaTest", "会话已归还池，当前池状态: ${pool.getPoolStatus()}")
+//                Log.d("GemmaTest", "会话已归还池，当前池状态: ${pool.getPoolStatus()}")
             }
         }
 
