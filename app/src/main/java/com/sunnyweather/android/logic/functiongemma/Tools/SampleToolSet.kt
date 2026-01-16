@@ -4,7 +4,9 @@ import android.util.Log
 import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
 
-class SampleToolSet {
+class SampleToolSet(
+    private val onToolExecuting: ((String) -> Unit)? = null  // 工具执行时的回调
+) {
 //    @Tool(description = "Get the current weather for a city")
 //    fun getCurrentWeather(
 //        @ToolParam(description = "The city name, e.g., San Francisco") city: String,
@@ -21,6 +23,8 @@ class SampleToolSet {
     fun sum(
         @ToolParam(description = "The numbers, could be floating point.") numbers: List<Double>,
     ): Double {
+        // 通知 UI：工具开始执行
+        onToolExecuting?.invoke("🔧 正在计算数字总和...")
         Log.d("GemmaTest", ">>> 拦截成功：正在执行 sum <<<")
         return numbers.sum()
     }

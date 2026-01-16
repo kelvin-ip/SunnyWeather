@@ -8,12 +8,17 @@ import com.sunnyweather.android.logic.network.SunnyWeatherNetwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
-class CityWeatherTool(private val onCityFound: (Place) -> Unit) {
+class CityWeatherTool(
+    private val onCityFound: (Place) -> Unit,
+    private val onToolExecuting: ((String) -> Unit)? = null  // 工具执行时的回调
+) {
 
     @Tool(description = "根据城市名称查询天气信息。当用户询问特定城市的天气、气温或环境时调用。")
     fun search_weather(
         @ToolParam(description = "城市名称，例如：北京、上海、London") city_name: String
-    ): Map<String, Any> { // 规范 1：返回 Map 而非 String
+    ): Map<String, Any> {
+        // 通知 UI：工具开始执行
+        onToolExecuting?.invoke("🔧 正在查询「$city_name」的天气数据...")
         Log.d("GemmaTest", ">>> 拦截成功:开始执行 search_weather: $city_name")
 
         return try {
@@ -33,7 +38,6 @@ class CityWeatherTool(private val onCityFound: (Place) -> Unit) {
             }
         } catch (e: Exception) {
             Log.e("CityWeatherTool", "Execution failed", e)
-            // 规范 4：捕获 429 或网络异常，以成功的方式告诉模型错误原因，防止崩溃
             mapOf("result" to "error", "reason" to (e.message ?: "unknown error"))
         }
     }

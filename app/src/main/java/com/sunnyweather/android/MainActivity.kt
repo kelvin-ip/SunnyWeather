@@ -31,38 +31,57 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnVoice: Button          // 语音按钮（全局）
     private lateinit var etInput: EditText         // 输入框（可选全局）
     private lateinit var tvConsole: TextView       // 日志控制台（可选全局）
+    private lateinit var btnSend: Button           // 发送按钮（全局）
     
     // Vosk 语音助手管理器
     private var voiceAssistant: VoiceAssistantManager? = null
+    
+    // 请求锁定标志（防止并发）
+    @Volatile
+    private var isProcessing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         Log.d("GemmaTest", "Supported ABIs: ${android.os.Build.SUPPORTED_ABIS.joinToString()}")
-         etInput = findViewById<EditText>(R.id.et_input)
-        val btnSend = findViewById<Button>(R.id.btn_send)
-         btnVoice = findViewById<Button>(R.id.btn_voice)
-         tvConsole = findViewById<TextView>(R.id.tv_console)
+        etInput = findViewById<EditText>(R.id.et_input)
+        btnSend = findViewById<Button>(R.id.btn_send)
+        btnVoice = findViewById<Button>(R.id.btn_voice)
+        tvConsole = findViewById<TextView>(R.id.tv_console)
 
-        val weatherTool = CityWeatherTool { place ->
+        // 工具执行时的回调（在 UI 上显示提示）
+        val onToolExecuting: (String) -> Unit = { message ->
             runOnUiThread {
-                if (!isFinishing && !isDestroyed) {
-                    val intent = Intent(this, WeatherActivity::class.java).apply {
-                        putExtra("location_lng", place.location.lng)
-                        putExtra("location_lat", place.location.lat)
-                        putExtra("place_name", place.name)
-                    }
-                    startActivity(intent)
-                }
+                tvConsole.append("\n$message")
             }
         }
+        
+        val weatherTool = CityWeatherTool(
+            onCityFound = { place ->
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        val intent = Intent(this, WeatherActivity::class.java).apply {
+                            putExtra("location_lng", place.location.lng)
+                            putExtra("location_lat", place.location.lat)
+                            putExtra("place_name", place.name)
+                        }
+                        startActivity(intent)
+                    }
+                }
+            },
+            onToolExecuting = onToolExecuting
+        )
 
         lifecycleScope.launch {
             try {
                 tvConsole.text = "正在初始化引擎，请稍候..."
                 val path = FileUtils.copyAssetToFiles(this@MainActivity, "mobile-actions_q8_ekv1024.litertlm")
                 deployment = ModelDeployment(path)
-                deployment.setTools(listOf(weatherTool, SampleToolSet(), SystemStatusTool()))
+                deployment.setTools(listOf(
+                    weatherTool, 
+                    SampleToolSet(onToolExecuting), 
+                    SystemStatusTool(onToolExecuting)
+                ))
                 deployment.initialize()
                 // 初始化 Vosk 语音助手（后台监听唤醒词）
                 initVoiceAssistant()
@@ -106,11 +125,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun processInput(inputText: String, etInput: EditText, tvConsole: TextView) {
+        // 检查是否正在处理中（防止并发）
+        if (isProcessing) {
+            runOnUiThread {
+                Toast.makeText(this, "⏳ 模型正在处理中，请稍候...", Toast.LENGTH_SHORT).show()
+                Log.w("GemmaTest", "用户尝试并发提问，已阻止")
+            }
+            return
+        }
+        
         tvConsole.append("\n\n>>> 用户: $inputText")
         etInput.setText("")
 
         lifecycleScope.launch {
             try {
+                // 设置处理中状态，禁用输入
+                setProcessingState(true)
+                
                 // 不再需要手动重建会话，会话池会自动提供干净的会话
                 tvConsole.append("\n模型回答: ") // 预留前缀
 
@@ -124,6 +155,32 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("GemmaTest", "流式交互过程异常", e)
+                runOnUiThread {
+                    tvConsole.append("\n[错误: ${e.message}]")
+                }
+            } finally {
+                // 恢复可用状态，启用输入
+                setProcessingState(false)
+            }
+        }
+    }
+    
+    /**
+     * 设置处理状态（控制 UI 交互）
+     */
+    private fun setProcessingState(processing: Boolean) {
+        isProcessing = processing
+        runOnUiThread {
+            btnSend.isEnabled = !processing
+            btnVoice.isEnabled = !processing
+            etInput.isEnabled = !processing
+            
+            if (processing) {
+                btnSend.text = "处理中..."
+                btnSend.alpha = 0.5f
+            } else {
+                btnSend.text = "发送"
+                btnSend.alpha = 1.0f
             }
         }
     }
